@@ -1,0 +1,72 @@
+variables:
+  PROJECT_NAME: "<project name goes here>"
+  PROJECT_COMPONENT: "ui"
+  DOCKER_PROJECT_NAME: "<docker project name goes here>"
+  KUBERNETES_NAMESPACE: "<kubernetes namespace goes here>"
+
+before_script:
+  - export CI_MERGE_REQUEST_TARGET_BRANCH_NAME=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:=$CI_COMMIT_REF_NAME}
+
+stages:
+- build
+- analyse
+- package
+- deploy
+
+build:
+  image: registry.docker.nat.bt.com/betalab-base-containers/node-12-buster:latest
+  stage: build
+  script:
+  - npm config set always-auth true
+  - npm config set //agile.nat.bt.com/nexus/repository/BETALAB_BetaLab_npm/:_authToken ${BETALAB_NEXUS_TOKEN}
+  - yarn install
+  # - yarn test
+  - CI=true yarn build
+  - cp configs/sonar/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.properties ./sonar-project.properties
+  artifacts:
+    paths:
+    - build/
+    - coverage/
+    expire_in: 1 week
+  only:
+  - unstable
+  - master
+  - release
+  - merge_requests
+
+analyse:
+  image: registry.docker.nat.bt.com/betalab-base-containers/node-12-buster:latest
+  stage: analyse
+  script:
+    - npm config set always-auth true
+    - npm config set //agile.nat.bt.com/nexus/repository/BETALAB_BetaLab_npm/:_authToken ${BETALAB_NEXUS_TOKEN}
+    - cp configs/sonar/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.properties ./sonar-project.properties
+    - yarn install
+    - yarn sonar
+  only:
+  - unstable
+  - master
+  - release
+
+package:
+  image: registry.docker.nat.bt.com/betalab-build-tools/bt-kaniko-build:latest
+  stage: package
+  script:
+  - echo "{\"auths\":{\"https://registry.docker.nat.bt.com\":{\"username\":\"$DOCKER_REGISTRY_USER\",\"password\":\"$DOCKER_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+  - /kaniko/executor --cache=false --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination=registry.docker.nat.bt.com/$DOCKER_PROJECT_NAME/$PROJECT_NAME-$PROJECT_COMPONENT-$CI_COMMIT_REF_NAME:latest --destination=registry.docker.nat.bt.com/$DOCKER_PROJECT_NAME/$PROJECT_NAME-$PROJECT_COMPONENT-$CI_COMMIT_REF_NAME:$CI_COMMIT_SHA
+  only:
+  - unstable
+  - master
+  - release
+
+deploy:
+  image: registry.docker.nat.bt.com/betalab-build-tools/kubernetes
+  stage: deploy
+  environment: deploy
+  script:
+  - (kubectl create -n $KUBERNETES_NAMESPACE configmap prometheus-ui-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME-env --from-env-file=deployment/envs/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.env -o yaml --dry-run | kubectl replace -f -) || kubectl create -n $KUBERNETES_NAMESPACE configmap prometheus-ui-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME-env --from-env-file=deployment/envs/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.env
+  - envsubst < ./deployment/ui.yml | kubectl apply -f -
+  only:
+  - unstable
+  - master
+  - release

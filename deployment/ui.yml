@@ -1,0 +1,98 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  namespace: $KUBERNETES_NAMESPACE
+  labels:
+    app: $PROJECT_NAME
+    component: $PROJECT_COMPONENT
+    version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $PROJECT_NAME
+      component: $PROJECT_COMPONENT
+      version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  template:
+    metadata:
+      labels:
+        app: $PROJECT_NAME
+        component: $PROJECT_COMPONENT
+        version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+      - name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+        image: registry.docker.nat.bt.com/$DOCKER_PROJECT_NAME/$PROJECT_NAME-$PROJECT_COMPONENT-$CI_COMMIT_REF_NAME:$CI_COMMIT_SHA
+        imagePullPolicy: "Always"
+        envFrom:
+        - configMapRef:
+            name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME-env
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  namespace: $KUBERNETES_NAMESPACE
+  labels:
+    app: $PROJECT_NAME
+    component: $PROJECT_COMPONENT
+    version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+  selector:
+    app: $PROJECT_NAME
+    component: $PROJECT_COMPONENT
+    version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  namespace: $KUBERNETES_NAMESPACE
+  labels:
+    app: $PROJECT_NAME
+    component: $PROJECT_COMPONENT
+    version: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+spec:
+  rules:
+    - host: ui.$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.<WORKBENCHNAME GOES HERE>.cluster.rp.bt.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+              servicePort: 80
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME-ssl
+  namespace: $KUBERNETES_NAMESPACE
+  annotations:
+    kubernetes.io/ingress.class: nginx-production
+spec:
+  tls:
+    - hosts:
+      - "*.project-kleio.betalab.rp.bt.com"
+      secretName: project-kleio-betalab-rp-bt-com-production-tls
+  rules:
+    - host: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME.project-kleio.betalab.rp.bt.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: $PROJECT_NAME-$PROJECT_COMPONENT-$CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+              servicePort: 80

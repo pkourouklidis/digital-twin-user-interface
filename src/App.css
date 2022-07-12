@@ -1,0 +1,22 @@
+.toolLink {
+  padding: 1em 0;
+}
+
+.no-tool {
+  padding-top: 7vh;
+  width: 100%;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.App .content {
+  flex-grow: 1;
+  border: 0;
+}
