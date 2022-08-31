@@ -21,7 +21,6 @@ build:
   - yarn install
   # - yarn test
   - CI=true yarn build
-  - cp configs/sonar/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.properties ./sonar-project.properties
   artifacts:
     paths:
     - build/
@@ -47,7 +46,6 @@ analyse:
   - unstable
   - master
   - release
-  - /^v[0-9]+\.[0-9]+\.[0-9]+$/
 
 package:
   image: registry.docker.nat.bt.com/betalab-build-tools/bt-kaniko-build:latest
