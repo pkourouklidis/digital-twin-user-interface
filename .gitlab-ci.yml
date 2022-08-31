@@ -37,7 +37,8 @@ analyse:
   stage: analyse
   script:
     - npm config set always-auth true
-    - npm config set //agile.nat.bt.com/nexus/repository/BETALAB_BetaLab_npm/:_authToken ${BETALAB_NEXUS_TOKEN}
+    - npm config set //${CI_SERVER_HOST}/api/v4/packages/npm/:_authToken ${CI_JOB_TOKEN}
+    - npm config set //${CI_SERVER_HOST}/api/v4/projects/39726/packages/npm/:_authToken ${CI_JOB_TOKEN}
     - cp configs/sonar/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME.properties ./sonar-project.properties
     - yarn install
     - yarn sonar
