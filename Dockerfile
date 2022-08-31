@@ -1,4 +1,4 @@
-FROM nginx:1.19
+FROM nginx:1.23.1
 MAINTAINER BetaLab
 
 RUN apt-get update -y && \
