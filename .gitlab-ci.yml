@@ -1,5 +1,5 @@
 variables:
-  PROJECT_NAME: "Call Centre Admin Panel"
+  PROJECT_NAME: "call-centre-admin-panel"
   PROJECT_COMPONENT: "ui"
   DOCKER_PROJECT_NAME: "betalab-callcentre-digitaltwin"
 
